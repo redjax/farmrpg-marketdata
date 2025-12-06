@@ -3,7 +3,7 @@ from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
-from marketdata.models import Base
+from marketdata.db.base import Base
 
 DB_FILENAME = "farmrpg_market_prices.db"
 DATABASE_URL = f"sqlite:///{DB_FILENAME}"

@@ -14,10 +14,14 @@ import httpx
 from marketdata import shared
 from marketdata import setup
 from marketdata.classes import MarketPricesRaw, MarketPrices, SteakPriceIn, KebabPriceIn
+from marketdata.models import SteakPriceModel, KebabPriceModel
+from marketdata.db import get_session
+
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 log = logging.getLogger(__name__)
 
-__all__ = ["run_scraper", "main"]
+__all__ = ["run_scraper", "check_online", "save_market_prices_to_db", "main"]
 
 
 def check_online(use_cache: bool = True) -> bool:
@@ -29,7 +33,7 @@ def check_online(use_cache: bool = True) -> bool:
     Returns:
         bool: True if the server is online and active, False otherwise.
     """
-    url = "https://farmrpg.com/index.php"
+    url: str = constants.HOME_URL
     maintenance_keywords = ["Server Reset", "will be right back"]
 
     try:
@@ -80,7 +84,7 @@ def request_market_prices() -> MarketPricesRaw:
     return MarketPricesRaw(steak_html=steak_prices_html, kebab_html=kebab_prices_html)
 
 
-def run_scraper(save_prices_html: bool = False):
+def run_scraper(save_prices_html: bool = False, save_prices_to_db: bool = False):
     ## Ensure website is up/not in maintenance mode
     if not check_online(use_cache=True):
         log.error("FarmRPG is offline or undergoing maintenance")
@@ -105,11 +109,57 @@ def run_scraper(save_prices_html: bool = False):
 
     # log.debug(f"Market Prices: {prices_obj}")
 
+    if save_prices_to_db:
+        save_market_prices_to_db(market_prices=prices_obj)
+
     return prices_obj
+
+
+def save_market_prices_to_db(market_prices: MarketPrices):
+    log.info("Saving market prices to database")
+    ## Save to database
+    try:
+        with get_session() as session:
+            ## Save steak prices
+            log.info("Saving steak prices")
+            for s in market_prices.steak_prices:
+                stmt = (
+                    sqlite_insert(SteakPriceModel)
+                    .values(
+                        date=s.date,
+                        price=s.price,
+                        market=s.market,
+                        volume=s.volume,
+                    )
+                    .on_conflict_do_nothing()
+                )
+                session.execute(stmt)
+
+            ## Save kebab prices
+            log.info("Saving kebab prices")
+            for k in market_prices.kebab_prices:
+                stmt = (
+                    sqlite_insert(KebabPriceModel)
+                    .values(
+                        timestamp=k.timestamp,
+                        price=k.price,
+                    )
+                    .on_conflict_do_nothing()
+                )
+                session.execute(stmt)
+
+            session.commit()
+
+    except Exception as exc:
+        log.error(
+            f"({type(exc).__name__}) Failed to save market prices to database: {exc}"
+        )
+        raise
 
 
 def main(
     save_prices_html: bool = False,
+    save_prices_to_db: bool = False,
     log_level: str = "INFO",
     enable_file_logging: bool = False,
 ):
@@ -122,14 +172,21 @@ def main(
     log.debug("Debug logging enabled")
 
     try:
-        market_prices: MarketPrices = run_scraper(save_prices=save_prices_html)
+        market_prices: MarketPrices = run_scraper(
+            save_prices=save_prices_html, save_prices_to_db=save_prices_to_db
+        )
     except Exception as exc:
         raise
 
 
 if __name__ == "__main__":
     try:
-        main(save_prices_html=True, log_level="DEBUG", enable_file_logging=True)
+        main(
+            save_prices_html=True,
+            save_prices_to_db=True,
+            log_level="DEBUG",
+            enable_file_logging=True,
+        )
     except Exception as exc:
         print(f"[ERROR] ({type(exc).__name__}) Failed to scrape current market prices")
         sys.exit(1)
