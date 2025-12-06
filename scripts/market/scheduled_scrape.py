@@ -4,11 +4,23 @@ import time
 from marketdata.scheduler.schedules import MarketScraperScheduler
 from marketdata.setup import setup_logging
 from marketdata import config
+from marketdata import db
 
 log = logging.getLogger(__name__)
 
 
 def main():
+    setup_logging(
+        level=config.LOGGING_SETTINGS.get("LEVEL", "INFO"),
+        file=config.LOGGING_SETTINGS.get("FILE_PATH", ""),
+    )
+
+    try:
+        db.init_db()
+    except Exception as exc:
+        log.error(f"({type(exc).__name__}) Error initializing database: {exc}")
+        raise
+
     ## Run the scraper every hour
     scheduler = MarketScraperScheduler(
         cron_expr=config.PRICES_SETTINGS.get("SCHEDULE", "0 * * * *"),
@@ -27,9 +39,5 @@ def main():
 
 
 if __name__ == "__main__":
-    setup_logging(
-        level=config.LOGGING_SETTINGS.get("LEVEL", "INFO"),
-        file=config.LOGGING_SETTINGS.get("FILE_PATH", ""),
-    )
 
     main()
