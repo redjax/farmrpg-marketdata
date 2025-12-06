@@ -76,7 +76,8 @@ def main(log_level: str = "INFO", enable_file_logging: bool = False):
         )
         raise
 
-    ts = shared.time_utils.get_ts(fmt="file")
+    ## Get a timestamp
+    ts = shared.time_utils.get_ts(fmt="str", custom="%Y-%m-%d_")
     # log.debug(f"Timestamp ({type(ts).__name__}): {ts}")
 
     ## Parse steak prices
