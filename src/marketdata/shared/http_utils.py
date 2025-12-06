@@ -41,7 +41,8 @@ def get_cache_transport(
 ) -> httpx.HTTPTransport:
     """Returns an httpx-compatible transport with Hishel caching."""
     storage: hishel.SyncSqliteStorage = hishel.SyncSqliteStorage(
-        database_path=cache_file, default_ttl=cache_ttl
+        database_path=cache_file,
+        default_ttl=cache_ttl,
     )
 
     transport: hishel.httpx.SyncCacheTransport = hishel.httpx.SyncCacheTransport(

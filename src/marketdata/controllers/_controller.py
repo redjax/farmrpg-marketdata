@@ -3,6 +3,7 @@ from contextlib import AbstractContextManager
 import typing as t
 
 from marketdata import constants
+from marketdata import shared
 from marketdata import db
 from marketdata.classes import (
     SteakPriceIn,
@@ -47,7 +48,13 @@ class FarmRPGMarketPricesController(AbstractContextManager):
             ## Initialize session for context manager
             self._session = self.session_factory().__enter__()
 
-        self._http_client = httpx.Client()
+        if self._http_client is None:
+            self._http_client = shared.http_utils.get_client(
+                use_cache=self.use_cache,
+                cache_db_file=self.cache_db_file,
+                cache_ttl=self.cache_ttl,
+            )
+
         return self
 
     def __exit__(self, exc_type, exc, tb):
@@ -56,12 +63,10 @@ class FarmRPGMarketPricesController(AbstractContextManager):
                 log.error(
                     f"({exc_type}) Error inside controller context: {exc}. Rolling back DB."
                 )
-
                 self._session.rollback()
             else:
                 self._session.commit()
                 log.debug("Controller committed DB changes.")
-
             self._session.close()
 
         if self._http_client is not None:
@@ -72,7 +77,11 @@ class FarmRPGMarketPricesController(AbstractContextManager):
     def _ensure_initialized(self):
         """Lazy init of HTTP client and DB session if needed."""
         if self._http_client is None:
-            self._http_client = httpx.Client()
+            self._http_client = shared.http_utils.get_client(
+                use_cache=self.use_cache,
+                cache_db_file=self.cache_db_file,
+                cache_ttl=self.cache_ttl,
+            )
 
         if self.save_to_db and self._session is None:
             ## Use context manager to get a real session

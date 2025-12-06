@@ -5,10 +5,11 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "apscheduler>=3.11.1",
     "beautifulsoup4>=4.14.3",
- "hishel>=1.1.7",
- "httpx>=0.28.1",
- "sqlalchemy>=2.0.44",
+    "hishel>=1.1.7",
+    "httpx>=0.28.1",
+    "sqlalchemy>=2.0.44",
 ]
 
 
