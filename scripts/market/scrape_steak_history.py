@@ -19,10 +19,10 @@ import shared
 log = logging.getLogger(__name__)
 
 
-@dataclass
-class MarketPricesRaw:
-    steak_html: str
-    kebab_html: str
+def generate_file_timestamp() -> str:
+    ts = shared.time_utils.get_ts(fmt="str", custom="%Y-%m-%d_")
+
+    return ts
 
 
 def save_html_to_file(soup: BeautifulSoup, output_file: str):
@@ -34,6 +34,57 @@ def save_html_to_file(soup: BeautifulSoup, output_file: str):
 
     with open(output_file, "w") as f:
         f.write(html)
+
+
+@dataclass
+class MarketPricesRaw:
+    steak_html: str
+    kebab_html: str
+    init_timestamp: str = field(default_factory=generate_file_timestamp)
+
+    def steak_soup(self) -> BeautifulSoup:
+        try:
+            steak_soup: BeautifulSoup = BeautifulSoup(self.steak_html, "html.parser")
+        except Exception as exc:
+            log.error(
+                f"({type(exc).__name__}) Failed parsing steak price history HTML: {exc}"
+            )
+            raise
+
+        return steak_soup
+
+    def kebab_soup(self) -> BeautifulSoup:
+        try:
+            kebab_soup: BeautifulSoup = BeautifulSoup(self.kebab_html, "html.parser")
+        except Exception as exc:
+            log.error(
+                f"({type(exc).__name__}) Failed parsing kebab price history HTML: {exc}"
+            )
+            raise
+
+        return kebab_soup
+
+    def save_steak_html(self, output_dir: str = ".data/history"):
+        output_filename: str = f"{self.init_timestamp}_steak_prices.html"
+
+        try:
+            save_html_to_file(
+                soup=self.steak_soup(), output_file=f"{output_dir}/{output_filename}"
+            )
+        except Exception as exc:
+            log.error(f"({type(exc).__name__}) Failed saving steak prices HTML: {exc}")
+            raise
+
+    def save_kebab_html(self, output_dir: str = ".data/history"):
+        output_filename: str = f"{self.init_timestamp}kebab_prices.html"
+
+        try:
+            save_html_to_file(
+                soup=self.kebab_soup(), output_file=f"{output_dir}/{output_filename}"
+            )
+        except Exception as exc:
+            log.error(f"({type(exc).__name__}) Failed saving kebab prices HTML: {exc}")
+            raise
 
 
 def request_market_prices() -> MarketPricesRaw:
@@ -83,37 +134,20 @@ def main(
     ## Parse steak prices
     log.info("Parsing steak market price history")
     try:
-        steak_soup = BeautifulSoup(market_prices.steak_html, "html.parser")
+        steak_soup = market_prices.steak_soup()
     except Exception as exc:
-        log.error(
-            f"({type(exc).__name__}) Failed parsing steak price history HTML: {exc}"
-        )
         raise
 
     ## Parse kebab steak prices
     log.info("Parsing kebab market price history")
     try:
-        kebab_soup = BeautifulSoup(market_prices.kebab_html, "html.parser")
+        kebab_soup = market_prices.kebab_soup()
     except Exception as exc:
-        log.error(
-            f"({type(exc).__name__}) Failed parsing kebab price history HTML: {exc}"
-        )
         raise
 
     if save_prices:
-        ## Get a timestamp
-        ts = shared.time_utils.get_ts(fmt="str", custom="%Y-%m-%d_")
-        # log.debug(f"Timestamp ({type(ts).__name__}): {ts}")
-
-        ## Save steak prices
-        steak_prices_file = f".data/history/{ts}_steak_prices.html"
-        log.info("Saving steak prices raw HTML")
-        save_html_to_file(soup=steak_soup, output_file=steak_prices_file)
-
-        ## Save kebab prices
-        log.info("Saving kebab prices raw HTML")
-        kebab_prices_file = f".data/history/{ts}_kebab_prices.html"
-        save_html_to_file(soup=kebab_soup, output_file=kebab_prices_file)
+        market_prices.save_steak_html()
+        market_prices.save_kebab_html()
 
 
 if __name__ == "__main__":
