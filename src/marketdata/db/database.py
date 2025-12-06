@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
 from marketdata.db.base import Base
 
-DB_FILENAME = "farmrpg_market_prices.db"
+DB_FILENAME = ".data/farmrpg_market_prices.db"
 DATABASE_URL = f"sqlite:///{DB_FILENAME}"
 
 # Session factory
