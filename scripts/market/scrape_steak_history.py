@@ -63,6 +63,26 @@ def main(log_level: str = "INFO", enable_file_logging: bool = False):
         )
         raise
 
+    ## Parse steak prices
+    log.info("Parsing steak market price history")
+    try:
+        steak_soup = BeautifulSoup(market_prices.steak_html, "html.parser")
+    except Exception as exc:
+        log.error(
+            f"({type(exc).__name__}) Failed parsing steak price history HTML: {exc}"
+        )
+        raise
+
+    ## Parse kebab steak prices
+    log.info("Parsing kebab market price history")
+    try:
+        kebab_soup = BeautifulSoup(market_prices.kebab_html, "html.parser")
+    except Exception as exc:
+        log.error(
+            f"({type(exc).__name__}) Failed parsing kebab price history HTML: {exc}"
+        )
+        raise
+
 
 if __name__ == "__main__":
     try:
