@@ -30,7 +30,7 @@ def check_online(use_cache: bool = True) -> bool:
         bool: True if the server is online and active, False otherwise.
     """
     url = "https://farmrpg.com/index.php"
-    maintenance_keywords = ["Server Reset", "will be right back", "Farm RPG"]
+    maintenance_keywords = ["Server Reset", "will be right back"]
 
     try:
         request = httpx.Request(method="GET", url=url)
