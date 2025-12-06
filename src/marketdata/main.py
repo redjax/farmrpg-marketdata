@@ -15,7 +15,7 @@ import marketdata.shared as shared
 
 log = logging.getLogger(__name__)
 
-__all__ = ["main"]
+__all__ = ["run_scraper", "main"]
 
 
 def request_market_prices() -> shared.MarketPricesRaw:
@@ -42,19 +42,7 @@ def request_market_prices() -> shared.MarketPricesRaw:
     )
 
 
-def main(
-    save_prices: bool = False,
-    log_level: str = "INFO",
-    enable_file_logging: bool = False,
-):
-    log_file = None
-
-    if enable_file_logging:
-        log_file = "logs/steak_market.log"
-
-    shared.setup_logging(level=log_level, file=log_file)
-    log.debug("Debug logging enabled")
-
+def run_scraper(save_prices_html: bool = False):
     log.info("Requesting market prices for steak & kebabs")
     try:
         market_prices: shared.MarketPricesRaw = request_market_prices()
@@ -78,7 +66,7 @@ def main(
     except Exception as exc:
         raise
 
-    if save_prices:
+    if save_prices_html:
         market_prices.save_steak_html()
         market_prices.save_kebab_html()
 
@@ -90,9 +78,28 @@ def main(
     # log.debug(f"Parsed kebab prices:\n{kebab_prices_parsed}")
 
 
+def main(
+    save_prices_html: bool = False,
+    log_level: str = "INFO",
+    enable_file_logging: bool = False,
+):
+    log_file = None
+
+    if enable_file_logging:
+        log_file = "logs/steak_market.log"
+
+    shared.setup_logging(level=log_level, file=log_file)
+    log.debug("Debug logging enabled")
+
+    try:
+        run_scraper(save_prices=save_prices_html)
+    except Exception as exc:
+        raise
+
+
 if __name__ == "__main__":
     try:
-        main(save_prices=True, log_level="DEBUG", enable_file_logging=True)
+        main(save_prices_html=True, log_level="DEBUG", enable_file_logging=True)
     except Exception as exc:
-        print(f"[ERROR] ({type(exc)}) Failed to scrape current market prices")
+        print(f"[ERROR] ({type(exc).__name__}) Failed to scrape current market prices")
         sys.exit(1)
