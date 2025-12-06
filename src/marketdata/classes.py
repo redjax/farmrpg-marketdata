@@ -1,6 +1,8 @@
 from pathlib import Path
 import logging
 from dataclasses import dataclass, field
+import datetime as dt
+import httpx
 
 from marketdata.shared import time_utils
 
@@ -15,6 +17,32 @@ def generate_file_timestamp(ts_fmt: str = "%Y-%m-%d") -> str:
     ts = time_utils.get_ts(fmt="str", custom=ts_fmt)
 
     return ts
+
+
+def enrich_date_with_year(date_str: str) -> str:
+    """
+    Convert a date like 'Dec 4' into 'YYYY-MM-DD' using the current year.
+
+    Params:
+        date_str (str): e.g., 'Dec 4'
+
+    Returns:
+        str: ISO formatted date string, e.g., '2025-12-04'
+    """
+    today = dt.date.today()
+    current_year = today.year
+
+    ## Parse the month/day with the current year
+    full_date_str = f"{date_str} {current_year}"  # 'Dec 4 2025'
+    parsed_date = dt.datetime.strptime(full_date_str, "%b %d %Y").date()
+
+    ## If the parsed date is in the future, it must be from last year
+    if parsed_date > today:
+        parsed_date = dt.datetime.strptime(
+            f"{date_str} {current_year-1}", "%b %d %Y"
+        ).date()
+
+    return parsed_date.strftime("%Y-%m-%d")
 
 
 def save_html_to_file(soup: BeautifulSoup, output_file: str):
@@ -102,7 +130,7 @@ class MarketPricesRaw:
                     volume = cols[3].get_text(strip=True)
 
                     row_data = {
-                        "Date": date,
+                        "Date": enrich_date_with_year(date),
                         "Price": price,
                         "Market": market,
                         "Volume": volume,

@@ -20,6 +20,44 @@ log = logging.getLogger(__name__)
 __all__ = ["run_scraper", "main"]
 
 
+def check_online(use_cache: bool = True) -> bool:
+    """Check if FarmRPG is online and not in maintenance mode.
+
+    Params:
+        use_cache (bool): Whether to use the shared caching transport.
+
+    Returns:
+        bool: True if the server is online and active, False otherwise.
+    """
+    url = "https://farmrpg.com/index.php"
+    maintenance_keywords = ["Server Reset", "will be right back", "Farm RPG"]
+
+    try:
+        request = httpx.Request(method="GET", url=url)
+        response: httpx.Response = shared.http_utils.send_request(
+            request, use_cache=use_cache
+        )
+    except Exception as exc:
+        log.error(f"[check_online] Request failed: {exc}")
+        return False
+
+    if response.status_code != 200:
+        log.warning(
+            f"[check_online] Server returned status code {response.status_code}"
+        )
+        return False
+
+    html = response.text
+
+    if any(kw in html for kw in maintenance_keywords):
+        log.warning("[check_online] FarmRPG appears to be in maintenance mode.")
+        return False
+
+    log.info("[check_online] FarmRPG is online and not in maintenance mode.")
+
+    return True
+
+
 def request_market_prices() -> MarketPricesRaw:
     steak_url: str = constants.STEAK_HISTORY_URL
     kebab_url: str = constants.KEBAB_HISTORY_URL
@@ -43,6 +81,12 @@ def request_market_prices() -> MarketPricesRaw:
 
 
 def run_scraper(save_prices_html: bool = False):
+    ## Ensure website is up/not in maintenance mode
+    if not check_online(use_cache=True):
+        log.error("FarmRPG is offline or undergoing maintenance")
+
+        return
+
     log.info("Requesting market prices for steak & kebabs")
     try:
         market_prices: MarketPricesRaw = request_market_prices()
@@ -72,10 +116,10 @@ def run_scraper(save_prices_html: bool = False):
 
     ## Parse price data
     steak_prices_parsed: list[dict] = market_prices.parse_steak_prices()
-    # log.debug(f"Parsed steak prices:\n{steak_prices_parsed}")
+    log.debug(f"Parsed steak prices:\n{steak_prices_parsed}")
 
     kebab_prices_parsed: list[dict] = market_prices.parse_kebab_prices()
-    # log.debug(f"Parsed kebab prices:\n{kebab_prices_parsed}")
+    log.debug(f"Parsed kebab prices:\n{kebab_prices_parsed}")
 
 
 def main(
