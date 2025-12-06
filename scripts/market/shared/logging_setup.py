@@ -32,13 +32,13 @@ def setup_logging(
     """
     Configure stdlib logging.
 
-    Args:
-        level: Console log level ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
-        file: Optional path to a file to append logs to (file always uses DEBUG)
-        message_format: "simple", "detailed", or "debug" (affects console)
-        show_timestamp: If False, omit timestamps from console output
-        config: Optional dictConfig; if provided, other params are ignored
-        silence_loggers: iterable of logger names to silence (set to WARNING & stop propagation)
+    Params:
+        level (str): Console log level ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+        file (str): Optional path to a file to append logs to (file always uses DEBUG)
+        message_format (str): "simple", "detailed", or "debug" (affects console)
+        show_timestamp (bool): If False, omit timestamps from console output
+        config (logging.dictConfig): Optional dictConfig; if provided, other params are ignored
+        silence_loggers (list[str]): iterable of logger names to silence (set to WARNING & stop propagation)
     """
 
     if config:

@@ -6,7 +6,9 @@ Kebab price history: https://farmrpg.com/steakhistoryk.php
 
 import logging
 import sys
+from pathlib import Path
 from dataclasses import dataclass, field
+
 from shared import constants
 
 from bs4 import BeautifulSoup
@@ -21,6 +23,17 @@ log = logging.getLogger(__name__)
 class MarketPricesRaw:
     steak_html: str
     kebab_html: str
+
+
+def save_html_to_file(soup: BeautifulSoup, output_file: str):
+    log.info(f"Saving HTML to file: {output_file}")
+    html = soup.prettify()
+
+    if not Path(str(output_file)).parent.exists():
+        Path(str(output_file)).parent.mkdir(parents=True, exist_ok=True)
+
+    with open(output_file, "w") as f:
+        f.write(html)
 
 
 def request_market_prices() -> MarketPricesRaw:
@@ -63,6 +76,9 @@ def main(log_level: str = "INFO", enable_file_logging: bool = False):
         )
         raise
 
+    ts = shared.time_utils.get_ts(fmt="file")
+    # log.debug(f"Timestamp ({type(ts).__name__}): {ts}")
+
     ## Parse steak prices
     log.info("Parsing steak market price history")
     try:
@@ -73,6 +89,10 @@ def main(log_level: str = "INFO", enable_file_logging: bool = False):
         )
         raise
 
+    ## Save steak prices
+    steak_prices_file = f".data/history/{ts}_steak_prices.html"
+    save_html_to_file(soup=steak_soup, output_file=steak_prices_file)
+
     ## Parse kebab steak prices
     log.info("Parsing kebab market price history")
     try:
@@ -82,6 +102,10 @@ def main(log_level: str = "INFO", enable_file_logging: bool = False):
             f"({type(exc).__name__}) Failed parsing kebab price history HTML: {exc}"
         )
         raise
+
+    ## Save kebab prices
+    kebab_prices_file = f".data/history/{ts}_kebab_prices.html"
+    save_html_to_file(soup=kebab_soup, output_file=kebab_prices_file)
 
 
 if __name__ == "__main__":
