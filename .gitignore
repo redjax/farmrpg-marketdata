@@ -23,5 +23,7 @@ logs/
 
 *.local.toml
 
+.env
+
 !*example*.*
 !*.*example*
