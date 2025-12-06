@@ -2,7 +2,7 @@ from pathlib import Path
 import logging
 from dataclasses import dataclass, field
 
-from . import time_utils
+from marketdata.shared import time_utils
 
 from bs4 import BeautifulSoup
 

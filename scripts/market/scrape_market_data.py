@@ -2,7 +2,7 @@ import sys
 import logging
 
 from marketdata import run_scraper
-from marketdata.shared import setup_logging
+from marketdata.setup import setup_logging
 
 import marketdata.shared as shared
 

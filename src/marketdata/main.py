@@ -7,18 +7,20 @@ Kebab price history: https://farmrpg.com/steakhistoryk.php
 import logging
 import sys
 
-from marketdata.shared import constants
+from marketdata import constants
 
 import httpx
 
-import marketdata.shared as shared
+from marketdata import shared
+from marketdata import setup
+from marketdata.classes import MarketPricesRaw
 
 log = logging.getLogger(__name__)
 
 __all__ = ["run_scraper", "main"]
 
 
-def request_market_prices() -> shared.MarketPricesRaw:
+def request_market_prices() -> MarketPricesRaw:
     steak_url: str = constants.STEAK_HISTORY_URL
     kebab_url: str = constants.KEBAB_HISTORY_URL
     log.debug(f"Steak URL: {steak_url}")
@@ -37,15 +39,13 @@ def request_market_prices() -> shared.MarketPricesRaw:
     kebab_prices_html = kebab_prices_res.content.decode("utf-8")
     # log.debug(f"Kebab prices HTML raw:\n{kebab_prices_html}")
 
-    return shared.MarketPricesRaw(
-        steak_html=steak_prices_html, kebab_html=kebab_prices_html
-    )
+    return MarketPricesRaw(steak_html=steak_prices_html, kebab_html=kebab_prices_html)
 
 
 def run_scraper(save_prices_html: bool = False):
     log.info("Requesting market prices for steak & kebabs")
     try:
-        market_prices: shared.MarketPricesRaw = request_market_prices()
+        market_prices: MarketPricesRaw = request_market_prices()
     except Exception as exc:
         log.error(
             f"({type(exc).__name__}) Failed requesting current steak prices: {exc}"
@@ -88,7 +88,7 @@ def main(
     if enable_file_logging:
         log_file = "logs/steak_market.log"
 
-    shared.setup_logging(level=log_level, file=log_file)
+    setup.setup_logging(level=log_level, file=log_file)
     log.debug("Debug logging enabled")
 
     try:
