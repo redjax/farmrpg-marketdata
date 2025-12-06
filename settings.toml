@@ -1,0 +1,18 @@
+dynaconf_merge = true
+
+[logging]
+level = "INFO"
+file_path = "logs/steak_market.log"
+
+[database]
+file = ".data/farmrpg_market_prices.db"
+
+[http]
+use_cache = false
+db_file = ".cache/http_cache.db"
+ttl = 3600
+
+[prices]
+save_html = false
+save_to_db = false
+schedule = "0 * * * *"

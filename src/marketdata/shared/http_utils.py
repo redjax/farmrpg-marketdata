@@ -3,6 +3,8 @@ import httpx
 import hishel
 import hishel.httpx
 
+from marketdata.config import HTTP_SETTINGS
+
 log = logging.getLogger(__name__)
 
 
@@ -12,9 +14,9 @@ __all__ = ["get_cache_transport", "get_client", "send_request"]
 def send_request(
     req: httpx.Request,
     client: httpx.Client | None = None,
-    use_cache: bool = True,
-    cache_db_file: str = "http_cache.db",
-    cache_ttl: int = 3600,
+    use_cache: bool = HTTP_SETTINGS.get("USE_CACHE", False),
+    cache_db_file: str = HTTP_SETTINGS.get("DB_FILE", "http_cache.db"),
+    cache_ttl: int = HTTP_SETTINGS.get("TTL", 3600),
 ) -> httpx.Response:
     if not req:
         raise ValueError("Missing httpx.Request object")
@@ -37,7 +39,8 @@ def send_request(
 
 
 def get_cache_transport(
-    cache_file: str = "http_cache.db", cache_ttl: int = 3600
+    cache_file: str = HTTP_SETTINGS.get("DB_FILE", "http_cache.db"),
+    cache_ttl: int = HTTP_SETTINGS.get("TTL", 3600),
 ) -> httpx.HTTPTransport:
     """Returns an httpx-compatible transport with Hishel caching."""
     storage: hishel.SyncSqliteStorage = hishel.SyncSqliteStorage(
@@ -53,10 +56,10 @@ def get_cache_transport(
 
 
 def get_client(
-    use_cache: bool = False,
+    use_cache: bool = HTTP_SETTINGS.get("USE_CACHE", False),
     cache_transport: hishel.httpx.SyncCacheTransport = None,
-    cache_db_file: str = "http_cache.db",
-    cache_ttl: int = 3600,
+    cache_db_file: str = HTTP_SETTINGS.get("DB_FILE", "http_cache.db"),
+    cache_ttl: int = HTTP_SETTINGS.get("TTL", 3600),
 ):
     if use_cache and not cache_transport:
         log.debug(

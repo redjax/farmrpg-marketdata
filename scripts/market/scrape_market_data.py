@@ -7,6 +7,7 @@ from marketdata.db import init_db, get_session
 from marketdata.models import SteakPriceModel, KebabPriceModel
 from marketdata.classes import MarketPricesRaw, MarketPrices
 from marketdata.controllers import FarmRPGMarketPricesController
+from marketdata import config
 
 import marketdata.shared as shared
 
@@ -15,7 +16,9 @@ log = logging.getLogger(__name__)
 
 def main():
     price_controller: FarmRPGMarketPricesController = FarmRPGMarketPricesController(
-        use_cache=True, save_html=True, save_to_db=True
+        use_cache=config.HTTP_SETTINGS.get("USE_CACHE", False),
+        save_html=config.PRICES_SETTINGS.get("SAVE_HTML", False),
+        save_to_db=config.PRICES_SETTINGS.get("SAVE_TO_DB", False),
     )
 
     if not price_controller.check_online():
@@ -36,7 +39,10 @@ def main():
 
 
 if __name__ == "__main__":
-    setup_logging(level="DEBUG")
+    setup_logging(
+        level=config.LOGGING_SETTINGS.get("LEVEL", "INFO"),
+        file=config.LOGGING_SETTINGS.get("FILE_PATH", ""),
+    )
     log.debug("Debug logging enabled")
 
     try:

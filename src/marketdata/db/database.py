@@ -1,11 +1,11 @@
-import os
 from pathlib import Path
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from contextlib import contextmanager
 from marketdata.db.base import Base
+from marketdata.config import DB_SETTINGS
 
-DB_FILENAME = ".data/farmrpg_market_prices.db"
+DB_FILENAME = DB_SETTINGS.get("FILE", "farmrpg_market_prices.db")
 DATABASE_URL = f"sqlite:///{DB_FILENAME}"
 
 # Session factory

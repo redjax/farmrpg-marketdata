@@ -32,16 +32,22 @@ class FarmRPGMarketPricesController(AbstractContextManager):
         save_html: bool = False,
         save_to_db: bool = False,
         session_factory=db.get_session,
+        external_http_client: httpx.Client | None = None,
     ):
         self.use_cache = use_cache
         self.cache_ttl = cache_ttl
         self.cache_db_file = cache_db_file
         self.save_html = save_html
         self.save_to_db = save_to_db
+        self._external_client = external_http_client
 
         self.session_factory = session_factory
         self._session: so.Session | None = None
+
         self._http_client: httpx.Client | None = None
+
+        if self._external_client:
+            self._http_client = self._external_client
 
     def __enter__(self) -> t.Self:
         if self.save_to_db:
@@ -69,7 +75,8 @@ class FarmRPGMarketPricesController(AbstractContextManager):
                 log.debug("Controller committed DB changes.")
             self._session.close()
 
-        if self._http_client is not None:
+        ## Only close if internal
+        if self._http_client is not None and self._external_client is None:
             self._http_client.close()
 
         return False

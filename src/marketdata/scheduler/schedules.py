@@ -25,7 +25,9 @@ class MarketScraperScheduler:
     def _run_scraper(self):
         try:
             log.info("Scheduled job starting: scraping FarmRPG market prices.")
-            with FarmRPGMarketPricesController(**self.controller_kwargs) as controller:
+            with FarmRPGMarketPricesController(
+                **self.controller_kwargs, external_http_client=self._http_client
+            ) as controller:
                 ## Inject client into controller
                 controller._http_client = self._http_client
 

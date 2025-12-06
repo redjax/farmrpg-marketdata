@@ -16,6 +16,13 @@ from marketdata import setup
 from marketdata.classes import MarketPricesRaw, MarketPrices, SteakPriceIn, KebabPriceIn
 from marketdata.models import SteakPriceModel, KebabPriceModel
 from marketdata.db import get_session
+from marketdata.config import (
+    SETTINGS,
+    DB_SETTINGS,
+    HTTP_SETTINGS,
+    LOGGING_SETTINGS,
+    PRICES_SETTINGS,
+)
 
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
@@ -84,7 +91,10 @@ def request_market_prices() -> MarketPricesRaw:
     return MarketPricesRaw(steak_html=steak_prices_html, kebab_html=kebab_prices_html)
 
 
-def run_scraper(save_prices_html: bool = False, save_prices_to_db: bool = False):
+def run_scraper(
+    save_prices_html: bool = PRICES_SETTINGS.get("SAVE_HTML", False),
+    save_prices_to_db: bool = PRICES_SETTINGS.get("SAVE_TO_DB", False),
+):
     ## Ensure website is up/not in maintenance mode
     if not check_online(use_cache=True):
         log.error("FarmRPG is offline or undergoing maintenance")
@@ -161,13 +171,8 @@ def main(
     save_prices_html: bool = False,
     save_prices_to_db: bool = False,
     log_level: str = "INFO",
-    enable_file_logging: bool = False,
+    log_file: str = "",
 ):
-    log_file = None
-
-    if enable_file_logging:
-        log_file = "logs/steak_market.log"
-
     setup.setup_logging(level=log_level, file=log_file)
     log.debug("Debug logging enabled")
 
@@ -182,10 +187,10 @@ def main(
 if __name__ == "__main__":
     try:
         main(
-            save_prices_html=True,
-            save_prices_to_db=True,
-            log_level="DEBUG",
-            enable_file_logging=True,
+            save_prices_html=PRICES_SETTINGS.get("SAVE_HTML", False),
+            save_prices_to_db=PRICES_SETTINGS.get("SAVE_TO_DB", False),
+            log_level=LOGGING_SETTINGS.get("LEVEL", "INFO"),
+            log_file=LOGGING_SETTINGS.get("FILE_PATH", ""),
         )
     except Exception as exc:
         print(f"[ERROR] ({type(exc).__name__}) Failed to scrape current market prices")
