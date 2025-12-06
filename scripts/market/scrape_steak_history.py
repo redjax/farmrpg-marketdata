@@ -58,7 +58,11 @@ def request_market_prices() -> MarketPricesRaw:
     return MarketPricesRaw(steak_html=steak_prices_html, kebab_html=kebab_prices_html)
 
 
-def main(log_level: str = "INFO", enable_file_logging: bool = False):
+def main(
+    save_prices: bool = False,
+    log_level: str = "INFO",
+    enable_file_logging: bool = False,
+):
     log_file = None
 
     if enable_file_logging:
@@ -76,10 +80,6 @@ def main(log_level: str = "INFO", enable_file_logging: bool = False):
         )
         raise
 
-    ## Get a timestamp
-    ts = shared.time_utils.get_ts(fmt="str", custom="%Y-%m-%d_")
-    # log.debug(f"Timestamp ({type(ts).__name__}): {ts}")
-
     ## Parse steak prices
     log.info("Parsing steak market price history")
     try:
@@ -89,10 +89,6 @@ def main(log_level: str = "INFO", enable_file_logging: bool = False):
             f"({type(exc).__name__}) Failed parsing steak price history HTML: {exc}"
         )
         raise
-
-    ## Save steak prices
-    steak_prices_file = f".data/history/{ts}_steak_prices.html"
-    save_html_to_file(soup=steak_soup, output_file=steak_prices_file)
 
     ## Parse kebab steak prices
     log.info("Parsing kebab market price history")
@@ -104,14 +100,25 @@ def main(log_level: str = "INFO", enable_file_logging: bool = False):
         )
         raise
 
-    ## Save kebab prices
-    kebab_prices_file = f".data/history/{ts}_kebab_prices.html"
-    save_html_to_file(soup=kebab_soup, output_file=kebab_prices_file)
+    if save_prices:
+        ## Get a timestamp
+        ts = shared.time_utils.get_ts(fmt="str", custom="%Y-%m-%d_")
+        # log.debug(f"Timestamp ({type(ts).__name__}): {ts}")
+
+        ## Save steak prices
+        steak_prices_file = f".data/history/{ts}_steak_prices.html"
+        log.info("Saving steak prices raw HTML")
+        save_html_to_file(soup=steak_soup, output_file=steak_prices_file)
+
+        ## Save kebab prices
+        log.info("Saving kebab prices raw HTML")
+        kebab_prices_file = f".data/history/{ts}_kebab_prices.html"
+        save_html_to_file(soup=kebab_soup, output_file=kebab_prices_file)
 
 
 if __name__ == "__main__":
     try:
-        main(log_level="DEBUG", enable_file_logging=True)
+        main(save_prices=True, log_level="DEBUG", enable_file_logging=True)
     except Exception as exc:
         print(f"[ERROR] ({type(exc)}) Failed to scrape current market prices")
         sys.exit(1)
