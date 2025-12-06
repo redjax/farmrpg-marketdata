@@ -17,5 +17,9 @@ logs/
 
 *.html
 
+*.db
+*.sqlite
+*.sqlite3
+
 !*example*.*
 !*.*example*
