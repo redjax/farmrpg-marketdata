@@ -19,8 +19,8 @@ import shared
 log = logging.getLogger(__name__)
 
 
-def generate_file_timestamp() -> str:
-    ts = shared.time_utils.get_ts(fmt="str", custom="%Y-%m-%d_")
+def generate_file_timestamp(ts_fmt: str = "%Y-%m-%d") -> str:
+    ts = shared.time_utils.get_ts(fmt="str", custom=ts_fmt)
 
     return ts
 
@@ -76,7 +76,7 @@ class MarketPricesRaw:
             raise
 
     def save_kebab_html(self, output_dir: str = ".data/history"):
-        output_filename: str = f"{self.init_timestamp}kebab_prices.html"
+        output_filename: str = f"{self.init_timestamp}_kebab_prices.html"
 
         try:
             save_html_to_file(
@@ -85,6 +85,73 @@ class MarketPricesRaw:
         except Exception as exc:
             log.error(f"({type(exc).__name__}) Failed saving kebab prices HTML: {exc}")
             raise
+
+    def parse_steak_prices(self) -> list[dict]:
+        ## Parse steak prices
+        try:
+            steak_rows = self.steak_soup().select("div.card-content-inner > div.row")
+        except Exception as exc:
+            log.error(
+                f"({type(exc).__name__}) Failed to extract steak price history table from HTML: {exc}"
+            )
+            raise
+
+        data: list = []
+
+        ## iterate over rows, skipping header
+        try:
+            for row in steak_rows[1:]:
+                cols = row.find_all("div", class_="col-auto")
+
+                if len(cols) == 4:
+                    date = cols[0].get_text(strip=True)
+                    price = cols[1].get_text(strip=True)
+                    market = cols[2].get_text(strip=True)
+                    volume = cols[3].get_text(strip=True)
+
+                    row_data = {
+                        "Date": date,
+                        "Price": price,
+                        "Market": market,
+                        "Volume": volume,
+                    }
+                    # log.debug(f"Steak price row data: {row_data}")
+
+                    data.append(row_data)
+        except Exception as exc:
+            log.error(
+                f"({type(exc).__name__}) Failed extracting steak price history into dict: {exc}"
+            )
+            raise
+
+        return data
+
+    def parse_kebab_prices(self) -> list[dict]:
+        try:
+            kebab_rows = self.kebab_soup().select("div.card-content-inner > div.row")
+        except Exception as exc:
+            log.error(
+                f"({type(exc).__name__}) Failed to extract kebab price history table from HTML: {exc}"
+            )
+            raise
+
+        data: list = []
+
+        # iterate over rows, skipping header
+        for row in kebab_rows[1:]:
+            cols = row.find_all("div", class_="col-auto")
+
+            if len(cols) == 2:
+                time = cols[0].get_text(strip=True)
+                price = cols[1].get_text(strip=True)
+
+                row_data = {
+                    "Time": time,
+                    "Price": price,
+                }
+                data.append(row_data)
+
+        return data
 
 
 def request_market_prices() -> MarketPricesRaw:
@@ -148,6 +215,13 @@ def main(
     if save_prices:
         market_prices.save_steak_html()
         market_prices.save_kebab_html()
+
+    ## Parse price data
+    steak_prices_parsed: list[dict] = market_prices.parse_steak_prices()
+    # log.debug(f"Parsed steak prices:\n{steak_prices_parsed}")
+
+    kebab_prices_parsed: list[dict] = market_prices.parse_kebab_prices()
+    log.debug(f"Parsed kebab prices:\n{kebab_prices_parsed}")
 
 
 if __name__ == "__main__":
