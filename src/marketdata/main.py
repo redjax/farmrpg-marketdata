@@ -13,7 +13,7 @@ import httpx
 
 from marketdata import shared
 from marketdata import setup
-from marketdata.classes import MarketPricesRaw
+from marketdata.classes import MarketPricesRaw, MarketPrices, SteakPriceIn, KebabPriceIn
 
 log = logging.getLogger(__name__)
 
@@ -96,30 +96,16 @@ def run_scraper(save_prices_html: bool = False):
         )
         raise
 
-    ## Parse steak prices
-    log.info("Parsing steak market price history")
-    try:
-        steak_soup = market_prices.steak_soup()
-    except Exception as exc:
-        raise
-
-    ## Parse kebab steak prices
-    log.info("Parsing kebab market price history")
-    try:
-        kebab_soup = market_prices.kebab_soup()
-    except Exception as exc:
-        raise
-
     if save_prices_html:
         market_prices.save_steak_html()
         market_prices.save_kebab_html()
 
-    ## Parse price data
-    steak_prices_parsed: list[dict] = market_prices.parse_steak_prices()
-    log.debug(f"Parsed steak prices:\n{steak_prices_parsed}")
+    ## Create object for passing price data around app
+    prices_obj: MarketPrices = market_prices.get_parsed_market_prices()
 
-    kebab_prices_parsed: list[dict] = market_prices.parse_kebab_prices()
-    log.debug(f"Parsed kebab prices:\n{kebab_prices_parsed}")
+    # log.debug(f"Market Prices: {prices_obj}")
+
+    return prices_obj
 
 
 def main(
@@ -136,7 +122,7 @@ def main(
     log.debug("Debug logging enabled")
 
     try:
-        run_scraper(save_prices=save_prices_html)
+        market_prices: MarketPrices = run_scraper(save_prices=save_prices_html)
     except Exception as exc:
         raise
 

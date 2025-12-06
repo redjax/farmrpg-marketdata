@@ -8,7 +8,7 @@ from marketdata.shared import time_utils
 
 log = logging.getLogger(__name__)
 
-__all__ = ["MarketPricesRaw"]
+__all__ = ["MarketPricesRaw", "MarketPrices", "SteakPriceIn", "KebabPriceIn"]
 
 
 def generate_file_timestamp(ts_fmt: str = "%Y-%m-%d") -> str:
@@ -28,6 +28,60 @@ def save_html_to_file(soup: BeautifulSoup, output_file: str):
 
 
 @dataclass
+class SteakPriceIn:
+    date: dt.date
+    price: int
+    market: str
+    volume: int
+
+
+@dataclass
+class KebabPriceIn:
+    timestamp: dt.datetime
+    price: int
+
+
+@dataclass
+class MarketPrices:
+    """
+    Data transfer object to hold parsed price data for the app.
+    """
+
+    steak_prices: list[SteakPriceIn]
+    kebab_prices: list[KebabPriceIn]
+
+
+@dataclass
+class MarketPrices:
+    steak_prices: list[SteakPriceIn] = field(default_factory=list)
+    kebab_prices: list[KebabPriceIn] = field(default_factory=list)
+
+    def load_from_raw(self, raw: "MarketPricesRaw"):
+        """
+        Parses the raw HTML data and stores the results as dataclass objects.
+        """
+        ## Parse and convert steak prices
+        self.steak_prices = [
+            SteakPriceIn(
+                date=row["Date"],
+                price=int(row["Price"].replace(",", "")),
+                market=row["Market"],
+                volume=int(row["Volume"].replace(",", "")),
+            )
+            for row in raw.parse_steak_prices()
+        ]
+
+        # Parse and convert kebab prices
+        self.kebab_prices = [
+            KebabPriceIn(
+                timestamp=row["Time"],
+                price=int(row["Price"].replace(",", "")),
+            )
+            for row in raw.parse_kebab_prices()
+        ]
+
+
+@dataclass
 class MarketPricesRaw:
     steak_html: str
     kebab_html: str
@@ -40,14 +94,34 @@ class MarketPricesRaw:
         default=None, init=False, repr=False
     )
 
-    # --- HTML parsing ---
+    def get_parsed_market_prices(self) -> MarketPrices:
+        """Return MarketPrices DTO with parsed steak & kebab market prices."""
+        steak_prices = [
+            SteakPriceIn(
+                date=row["Date"],
+                price=int(row["Price"].replace(",", "")),
+                market=row["Market"],
+                volume=int(row["Volume"].replace(",", "")),
+            )
+            for row in self.parse_steak_prices()
+        ]
+
+        kebab_prices = [
+            KebabPriceIn(
+                timestamp=row["Time"],
+                price=int(row["Price"].replace(",", "")),
+            )
+            for row in self.parse_kebab_prices()
+        ]
+
+        return MarketPrices(steak_prices=steak_prices, kebab_prices=kebab_prices)
+
     def steak_soup(self) -> BeautifulSoup:
         return BeautifulSoup(self.steak_html, "html.parser")
 
     def kebab_soup(self) -> BeautifulSoup:
         return BeautifulSoup(self.kebab_html, "html.parser")
 
-    # --- HTML saving ---
     def save_steak_html(self, output_dir: str = ".data/history"):
         save_html_to_file(
             self.steak_soup(), f"{output_dir}/{self.init_timestamp}_steak_prices.html"
@@ -58,7 +132,6 @@ class MarketPricesRaw:
             self.kebab_soup(), f"{output_dir}/{self.init_timestamp}_kebab_prices.html"
         )
 
-    # --- Parsing directly to datetimes ---
     def parse_steak_prices(self) -> list[dict]:
         try:
             rows = self.steak_soup().select("div.card-content-inner > div.row")
@@ -123,10 +196,10 @@ class MarketPricesRaw:
                 "Time": dt_obj,
                 "Price": cols[1].get_text(strip=True),
             }
+
             data.append(row_data)
         return data
 
-    # --- Public access with caching ---
     def steak_prices_dt(self, use_cache: bool = True) -> list[dict]:
         if use_cache and self._steak_prices_dt_cache is not None:
             return self._steak_prices_dt_cache
