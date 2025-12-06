@@ -1,0 +1,35 @@
+---
+name: farmrpg-market-watcher
+
+volumes:
+  farmrpg_logs: {}
+  farmrpg_db: {}
+
+services:
+  scraper:
+    restart: unless-stopped
+    build:
+      context: ../../
+      dockerfile: containers/scraper/dockerfiles/Dockerfile
+      args:
+        UV_BASE: ${UV_IMAGE_VER:-0.9.16}
+        PYTHON_BASE: ${PYTHON_IMG_VER:-3.14-slim}
+    working_dir: /app
+    container_name: scraper
+    command: ["uv", "run", "scripts/market/scheduled_scrape.py"]
+    environment:
+      TZ: ${TZ:-Etc/UTC}
+
+      DYNACONF_LOGGING__LEVEL: ${LOG_LEVEL:-INFO}
+      DYNACONF_LOGGING__FILE_PATH: /app/logs/market_scrape.log
+      DYNACONF_DATABASE__FILE: /app/db/farmrpg_market_prices.db
+      DYNACONF_HTTP__USE_CACHE: ${USE_HTTP_CACHE:-false}
+      DYNACONF_HTTP__DB_FILE: http_cache.db
+      DYNACONF_HTTP__TTL: ${CACHE_TTL:-3600}
+
+      DYNACONF_PRICES__SAVE_HTML: ${SAVE_SCRAPES_HTML:-false}
+      DYNACONF_PRICES__SAVE_TO_DB: ${SAVE_SCRAPES_TO_DB:-false}
+      DYNACONF_PRICES__SCHEDULE: ${SCRAPE_SCHEDULE:-"0 * * * *"}
+    volumes:
+      - ${LOGS_DIR:-farmrpg_logs}:/app/logs
+      - ${DB_DIR:-farmrpg_db}:/app/db
