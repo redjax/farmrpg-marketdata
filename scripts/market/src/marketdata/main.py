@@ -6,17 +6,16 @@ Kebab price history: https://farmrpg.com/steakhistoryk.php
 
 import logging
 import sys
-from pathlib import Path
-from dataclasses import dataclass, field
 
-from shared import constants
+from marketdata.shared import constants
 
-from bs4 import BeautifulSoup
 import httpx
 
-import shared
+import marketdata.shared as shared
 
 log = logging.getLogger(__name__)
+
+__all__ = ["main"]
 
 
 def request_market_prices() -> shared.MarketPricesRaw:

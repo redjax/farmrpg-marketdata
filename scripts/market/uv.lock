@@ -97,7 +97,7 @@ wheels = [
 ]
 
 [[package]]
-name = "market"
+name = "marketdata"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

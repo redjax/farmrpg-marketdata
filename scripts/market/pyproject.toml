@@ -1,11 +1,7 @@
 [project]
-name = "market"
+name = "marketdata"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "beautifulsoup4>=4.14.3",
-    "hishel>=1.1.7",
-    "httpx>=0.28.1",
-]
+dependencies = ["beautifulsoup4>=4.14.3", "hishel>=1.1.7", "httpx>=0.28.1"]
