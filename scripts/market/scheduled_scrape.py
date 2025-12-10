@@ -21,7 +21,6 @@ def main():
         log.error(f"({type(exc).__name__}) Error initializing database: {exc}")
         raise
 
-    ## Run the scraper every hour
     scheduler = MarketScraperScheduler(
         cron_expr=config.PRICES_SETTINGS.get("SCHEDULE", "0 * * * *"),
         use_cache=config.HTTP_SETTINGS.get("USE_CACHE", False),
