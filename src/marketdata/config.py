@@ -6,6 +6,7 @@ __all__ = [
     "DB_SETTINGS",
     "HTTP_SETTINGS",
     "PRICES_SETTINGS",
+    "APP_DATA_DIR",
 ]
 
 SETTINGS = Dynaconf(
@@ -23,3 +24,4 @@ LOGGING_SETTINGS = SETTINGS.get("logging", {})
 DB_SETTINGS = SETTINGS.get("database", {})
 HTTP_SETTINGS = SETTINGS.get("http", {})
 PRICES_SETTINGS = SETTINGS.get("prices", {})
+APP_SETTINGS = SETTINGS.get("app", {})

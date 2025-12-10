@@ -10,14 +10,24 @@ from marketdata.classes import (
     KebabPriceIn,
     MarketPrices,
     MarketPricesRaw,
+    CurrentPriceIn,
+    CurrentPrices,
+    CurrentPricesRaw,
 )
-from marketdata.models import KebabPriceModel, SteakPriceModel
+from marketdata.models import (
+    KebabPriceModel,
+    SteakPriceModel,
+    SteakPriceCurrentModel,
+    KebabPriceCurrentModel,
+)
 
 import sqlalchemy.orm as so
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 import httpx
 
 log = logging.getLogger(__name__)
+
+__all__ = ["FarmRPGMarketPricesController"]
 
 
 class FarmRPGMarketPricesController(AbstractContextManager):
@@ -94,6 +104,18 @@ class FarmRPGMarketPricesController(AbstractContextManager):
             ## Use context manager to get a real session
             self._session = self.session_factory().__enter__()
 
+    def save_current_prices(self, prices: CurrentPrices):
+        """Save current prices to database if enabled."""
+        if not self.save_to_db:
+            return
+
+        if self._session is None:
+            with self.session_factory() as session:
+                self._save_current_prices_in_session(session, prices)
+            return
+
+        self._save_current_prices_in_session(self._session, prices)
+
     def _send_request(self, req: httpx.Request) -> str:
         """Send HTTP request using internal client."""
         self._ensure_initialized()
@@ -121,6 +143,47 @@ class FarmRPGMarketPricesController(AbstractContextManager):
 
         ## Inside context manager
         self._save_prices_in_session(self._session, prices)
+
+    def _save_current_prices_in_session(
+        self, session: so.Session, prices: CurrentPrices
+    ):
+        """Save current steak/kabob prices to database."""
+        try:
+            log.info("Saving current steak price")
+            stmt = (
+                sqlite_insert(SteakPriceCurrentModel)
+                .values(
+                    timestamp=prices.current.timestamp, price=prices.current.steak_price
+                )
+                .on_conflict_do_update(
+                    index_elements=["id"],
+                    set_={
+                        "timestamp": prices.current.timestamp,
+                        "price": prices.current.steak_price,
+                    },
+                )
+            )
+            session.execute(stmt)
+
+            log.info("Saving current kebab price")
+            stmt = (
+                sqlite_insert(KebabPriceCurrentModel)
+                .values(
+                    timestamp=prices.current.timestamp, price=prices.current.kabob_price
+                )
+                .on_conflict_do_update(
+                    index_elements=["id"],
+                    set_={
+                        "timestamp": prices.current.timestamp,
+                        "price": prices.current.kabob_price,
+                    },
+                )
+            )
+            session.execute(stmt)
+
+        except Exception as exc:
+            log.error(f"Failed to save current prices: {exc}")
+            raise
 
     def _save_prices_in_session(self, session: so.Session, prices: MarketPrices):
         try:
@@ -168,7 +231,7 @@ class FarmRPGMarketPricesController(AbstractContextManager):
 
         return True
 
-    def run(self) -> MarketPrices:
+    def get_price_history(self) -> MarketPrices:
         """Scrape, parse, optionally save HTML and DB."""
         self._ensure_initialized()
         log.info("Requesting market price pages")
@@ -189,9 +252,39 @@ class FarmRPGMarketPricesController(AbstractContextManager):
             raw.save_kebab_html()
 
         log.info("Parsing market prices")
-        parsed: MarketPrices = raw.get_parsed_market_prices()
+        parsed: MarketPrices = raw.get_parsed_market_prices_history()
 
         if self.save_to_db:
             self._save_to_db(parsed)
+
+        return parsed
+
+    def get_current_prices(self) -> CurrentPrices:
+        """Scrape, parse, optionally save current prices and DB."""
+        self._ensure_initialized()
+        log.info("Requesting current prices")
+
+        current_html = self._send_request(
+            httpx.Request("GET", constants.CURRENT_MARKET_PRICES_URL)
+        )
+
+        raw: CurrentPricesRaw = CurrentPricesRaw(html=current_html)
+
+        if self.save_html:
+            raw.save_html()
+
+        log.info("Parsing current prices")
+        steak_price = raw.steak_price()
+        kabob_price = raw.kabob_price()
+
+        if steak_price is None or kabob_price is None:
+            raise RuntimeError(
+                f"Failed to parse prices: steak={steak_price}, kabob={kabob_price}"
+            )
+
+        parsed: CurrentPrices = CurrentPrices.from_raw(raw, steak_price, kabob_price)
+
+        if self.save_to_db:
+            self.save_current_prices(parsed)
 
         return parsed

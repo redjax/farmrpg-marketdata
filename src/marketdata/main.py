@@ -28,7 +28,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 log = logging.getLogger(__name__)
 
-__all__ = ["run_scraper", "check_online", "save_market_prices_to_db", "main"]
+__all__ = ["run_scraper", "check_online", "save_market_prices_history_to_db", "main"]
 
 
 def check_online(use_cache: bool = True) -> bool:
@@ -69,7 +69,7 @@ def check_online(use_cache: bool = True) -> bool:
     return True
 
 
-def request_market_prices() -> MarketPricesRaw:
+def request_market_prices_history_history() -> MarketPricesRaw:
     steak_url: str = constants.STEAK_HISTORY_URL
     kebab_url: str = constants.KEBAB_HISTORY_URL
     log.debug(f"Steak URL: {steak_url}")
@@ -103,7 +103,7 @@ def run_scraper(
 
     log.info("Requesting market prices for steak & kebabs")
     try:
-        market_prices: MarketPricesRaw = request_market_prices()
+        market_prices_history: MarketPricesRaw = request_market_prices_history()
     except Exception as exc:
         log.error(
             f"({type(exc).__name__}) Failed requesting current steak prices: {exc}"
@@ -111,28 +111,28 @@ def run_scraper(
         raise
 
     if save_prices_html:
-        market_prices.save_steak_html()
-        market_prices.save_kebab_html()
+        market_prices_history.save_steak_html()
+        market_prices_history.save_kebab_html()
 
     ## Create object for passing price data around app
-    prices_obj: MarketPrices = market_prices.get_parsed_market_prices()
+    prices_obj: MarketPrices = market_prices_history.get_parsed_market_prices_history()
 
     # log.debug(f"Market Prices: {prices_obj}")
 
     if save_prices_to_db:
-        save_market_prices_to_db(market_prices=prices_obj)
+        save_market_prices_to_db(market_prices_history=prices_obj)
 
     return prices_obj
 
 
-def save_market_prices_to_db(market_prices: MarketPrices):
+def save_market_prices_history_to_db(market_prices_history: MarketPrices):
     log.info("Saving market prices to database")
     ## Save to database
     try:
         with get_session() as session:
             ## Save steak prices
             log.info("Saving steak prices")
-            for s in market_prices.steak_prices:
+            for s in market_prices_history.steak_prices:
                 stmt = (
                     sqlite_insert(SteakPriceModel)
                     .values(
@@ -147,7 +147,7 @@ def save_market_prices_to_db(market_prices: MarketPrices):
 
             ## Save kebab prices
             log.info("Saving kebab prices")
-            for k in market_prices.kebab_prices:
+            for k in market_prices_history.kebab_prices:
                 stmt = (
                     sqlite_insert(KebabPriceModel)
                     .values(
@@ -177,7 +177,7 @@ def main(
     log.debug("Debug logging enabled")
 
     try:
-        market_prices: MarketPrices = run_scraper(
+        market_prices_history: MarketPrices = run_scraper(
             save_prices=save_prices_html, save_prices_to_db=save_prices_to_db
         )
     except Exception as exc:
