@@ -168,7 +168,7 @@ class FarmRPGMarketPricesController(AbstractContextManager):
 
         return True
 
-    def run(self) -> MarketPrices:
+    def get_price_history(self) -> MarketPrices:
         """Scrape, parse, optionally save HTML and DB."""
         self._ensure_initialized()
         log.info("Requesting market price pages")
@@ -189,7 +189,7 @@ class FarmRPGMarketPricesController(AbstractContextManager):
             raw.save_kebab_html()
 
         log.info("Parsing market prices")
-        parsed: MarketPrices = raw.get_parsed_market_prices()
+        parsed: MarketPrices = raw.get_parsed_market_prices_history()
 
         if self.save_to_db:
             self._save_to_db(parsed)

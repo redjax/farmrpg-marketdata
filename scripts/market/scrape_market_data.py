@@ -30,7 +30,7 @@ def main():
 
     ## Run scraper
     try:
-        market_prices: MarketPrices = price_controller.run()
+        market_prices_history: MarketPrices = price_controller.get_price_history()
     except Exception as exc:
         log.error(
             f"({type(exc).__name__}) Failed to scrape FarmRPG market prices. Details: {exc}"

@@ -94,7 +94,7 @@ class MarketPricesRaw:
         default=None, init=False, repr=False
     )
 
-    def get_parsed_market_prices(self) -> MarketPrices:
+    def get_parsed_market_prices_history(self) -> MarketPrices:
         """Return MarketPrices DTO with parsed steak & kebab market prices."""
         steak_prices = [
             SteakPriceIn(

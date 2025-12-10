@@ -31,11 +31,11 @@ class MarketScraperScheduler:
                 ## Inject client into controller
                 controller._http_client = self._http_client
 
-                market_prices = controller.run()
+                market_prices_history = controller.get_price_history()
 
                 log.info(
-                    f"Scraper run completed. Parsed {len(market_prices.steak_prices)} steak prices "
-                    f"and {len(market_prices.kebab_prices)} kebab prices."
+                    f"Scraper run completed. Parsed {len(market_prices_history.steak_prices)} steak prices "
+                    f"and {len(market_prices_history.kebab_prices)} kebab prices."
                 )
         except Exception as exc:
             log.error(f"Scheduled job failed: ({type(exc).__name__}) {exc}")
