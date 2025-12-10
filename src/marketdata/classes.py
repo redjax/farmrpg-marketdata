@@ -1,3 +1,4 @@
+import typing as t
 from pathlib import Path
 import logging
 from dataclasses import dataclass, field
@@ -8,7 +9,14 @@ from marketdata.shared import time_utils
 
 log = logging.getLogger(__name__)
 
-__all__ = ["MarketPricesRaw", "MarketPrices", "SteakPriceIn", "KebabPriceIn"]
+__all__ = [
+    "MarketPricesRaw",
+    "MarketPrices",
+    "SteakPriceIn",
+    "KebabPriceIn",
+    "CurrentPricesRaw",
+    "CurrentPrices",
+]
 
 
 def generate_file_timestamp(ts_fmt: str = "%Y-%m-%d") -> str:
@@ -42,13 +50,144 @@ class KebabPriceIn:
 
 
 @dataclass
-class MarketPrices:
-    """
-    Data transfer object to hold parsed price data for the app.
-    """
+class CurrentPriceIn:
+    """Current steak/kabob price snapshot"""
 
-    steak_prices: list[SteakPriceIn]
-    kebab_prices: list[KebabPriceIn]
+    timestamp: dt.datetime
+    steak_price: int
+    kabob_price: int
+
+
+@dataclass
+class CurrentPrices:
+    """Current market prices DTO"""
+
+    current: CurrentPriceIn
+    init_timestamp: str = field(default_factory=generate_file_timestamp)
+
+    @classmethod
+    def from_raw(
+        cls, raw: "CurrentPricesRaw", steak_price: int, kabob_price: int
+    ) -> "CurrentPrices":
+        """Create from raw HTML data + already-extracted prices"""
+        return cls(
+            current=CurrentPriceIn(
+                timestamp=dt.datetime.now(),
+                steak_price=steak_price,
+                kabob_price=kabob_price,
+            )
+        )
+
+
+@dataclass
+class CurrentPricesRaw:
+    """Raw HTML data for current steak/kabob prices"""
+
+    html: str
+    init_timestamp: str = field(default_factory=generate_file_timestamp)
+
+    def soup(self) -> BeautifulSoup:
+        return BeautifulSoup(self.html, "html.parser")
+
+    def save_html(self, output_dir: str = ".data/current"):
+        save_html_to_file(
+            self.soup(), f"{output_dir}/{self.init_timestamp}_current_prices.html"
+        )
+
+    def _normalize_price(self, price_text: str) -> t.Optional[int]:
+        if not price_text:
+            return None
+        cleaned = (
+            price_text.replace(",", "")
+            .replace("Silver", "")
+            .replace("G", "")
+            .replace("g", "")
+            .strip()
+        )
+        try:
+            return int(cleaned)
+        except ValueError:
+            return None
+
+    def steak_price(self) -> t.Optional[int]:
+        """Extract current steak price"""
+        soup = self.soup()
+        results = {"steak": None, "kabob": None}
+
+        price_containers = soup.find_all(
+            string=lambda text: text and "Current Market Price:" in text
+        )
+
+        for container in price_containers:
+            parent = container.parent
+
+            if not parent:
+                continue
+
+            strong_el = parent.find("strong")
+
+            if strong_el:
+                raw_price = strong_el.get_text(strip=True)
+                price = self._normalize_price(raw_price)
+
+                ## Determine steak vs kabob by context
+                parent_text = parent.get_text().lower()
+
+                if "kabob" in parent_text:
+                    results["kabob"] = price
+                elif results["steak"] is None:
+                    results["steak"] = price
+
+        ## Fallback: first/second containers
+        if results["steak"] is None and price_containers:
+            first_strong = price_containers[0].parent.find("strong")
+
+            if first_strong:
+                results["steak"] = self._normalize_price(
+                    first_strong.get_text(strip=True)
+                )
+
+        return results["steak"]
+
+    def kabob_price(self) -> t.Optional[int]:
+        """Extract current kabob price"""
+        soup = self.soup()
+        results = {"steak": None, "kabob": None}
+
+        price_containers = soup.find_all(
+            string=lambda text: text and "Current Market Price:" in text
+        )
+
+        for container in price_containers:
+            parent = container.parent
+
+            if not parent:
+                continue
+
+            strong_el = parent.find("strong")
+
+            if strong_el:
+                raw_price = strong_el.get_text(strip=True)
+                price = self._normalize_price(raw_price)
+
+                parent_text = parent.get_text().lower()
+
+                if "kabob" in parent_text:
+                    return price
+
+        ## Fallback: second container
+        if len(price_containers) >= 2:
+            second_strong = price_containers[1].parent.find("strong")
+
+            if second_strong:
+                return self._normalize_price(second_strong.get_text(strip=True))
+
+        return None
+
+    @property
+    def prices(self) -> dict[str, t.Optional[int]]:
+        """Get both prices as dict for quick access"""
+        return {"steak": self.steak_price(), "kabob": self.kabob_price()}
 
 
 @dataclass
